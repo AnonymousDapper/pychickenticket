@@ -1,3 +1,5 @@
+#! /usr/bin/env python
+
 # MIT License
 
 # Copyright (c) 2018 ChickenTicket
@@ -20,12 +22,24 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from Cryptodome.Hash import keccak
+from setuptools import setup, find_packages
 
+with open("README.md", "r") as readme:
+    long_desc = readme.read()
 
-def chickhash(data: bytes):
-    """
-    :param data: bytes-like data to be hashed
-    :return: Cryptodome.Hash.keccak object
-    """
-    return keccak.new(data=data, digest_bits=256)
+setup(
+    name="chickenticket",
+    version="0.0.1",
+    author="Aareon Sullivan",
+    author_email="aareon@died-in.space",
+    description="Pure Python implementation of a cryptocurrency blockchain",
+    long_description=long_desc,
+    long_description_content_type="text/markdown",
+    url="",
+    packages=find_packages(),
+    classifiers=(
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License",
+        "Operating System :: OS Independent"
+    )
+)

@@ -24,8 +24,13 @@ __all__ = ['get_logger']
 
 import inspect
 import logging
+import os
 
 from logging import handlers
+
+# Make sure the log directory exists before trying to use it
+if not os.path.exists("logs"):
+    os.makedirs("logs")
 
 FILE_HANDLER = handlers.RotatingFileHandler(filename="logs/pychickenticket.log", maxBytes=5 * 1024 * 1024, backupCount=3) # max 5Mb log files, with 3 past logs saved
 LOG_FORMATTER = logging.Formatter("%(asctime)s %(levelname)s | [In module %(module)s -> function %(funcName)s] (%(filename)s:%(lineno)s) | %(message)s")

@@ -1,0 +1,2 @@
+SQLAlchemy~=1.2.2
+pycryptodomex~=3.5.1

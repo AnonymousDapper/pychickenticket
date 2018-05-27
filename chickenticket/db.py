@@ -72,6 +72,8 @@ class DB:
         self.Session = sessionmaker(bind=self.engine)
         Base.metadata.create_all(self.engine)
 
+        logger.debug("Created database engine")
+
     @contextmanager # allows to cleanly open and close sessions, automatically rolling back any errors
     def get_session(self):
         session = self.Session()
