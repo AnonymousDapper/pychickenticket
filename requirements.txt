@@ -1,2 +1,4 @@
 SQLAlchemy~=1.2.2
 pycryptodomex~=3.5.1
+merkletools~=1.0.3
+coincurve~=7.1.0
