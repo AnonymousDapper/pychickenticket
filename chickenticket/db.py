@@ -20,7 +20,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-__all__ = ["Ledger", "Wallet", "DB"]
+__all__ = ["Ledger", "Wallet", "DB", "PooledTransaction", "MemPool"]
 
 from utils.logger import get_logger
 
@@ -64,6 +64,21 @@ class Wallet(Base):
     def __repr__(self):
         return "<Wallet(id={0.id}, address='{0.address}', public_key='{0.public_key}', private_key='{0.private_key}')>".format(self)
 
+class PooledTransaction(Base):
+    __tablename__ = "transaction_pool"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    timestamp = Column(Integer, nullable=False)
+    address = Column(String(length=64), nullable=False)
+    recipient = Column(String(length=64), nullable=False)
+    amount = Column(Integer, nullable=False)
+    signature = Column(String, nullable=False) # signing key used to sign the transaction (PKCS1_v1_5)
+    public_key = Column(String(length=88), nullable=False)
+    openfield = Column(String, nullable=True)
+
+    def __repr__(self):
+        return "<PooledTransaction(id={0.id}, timestamp={0.timestamp}, address='{0.address}', recipient='{0.recipient}', amount={0.amount}, signature='{0.signature}', public_key='{0.public_key}', openfield='{0.openfield}')>".format(self)
+
 # adapter class
 class DB:
     def __init__(self, *args, **kwargs):
@@ -73,6 +88,26 @@ class DB:
         Base.metadata.create_all(self.engine)
 
         logger.debug("Created database engine")
+
+    @contextmanager # allows to cleanly open and close sessions, automatically rolling back any errors
+    def get_session(self):
+        session = self.Session()
+        try:
+            yield session
+            session.commit()
+        except Exception as e:
+            logger.critical("{0.name}: {0!s}".format(e))
+            session.rollback()
+        finally:
+            session.close()
+
+class MemPool:
+    def __init__(self, *args, **kwargs):
+        self.engine = create_engine("sqlite:///")
+        self.Session = sessionmaker(bind=self.engine)
+        Base.metadata.create_all(self.engine)
+
+        logger.debug("Created pooled transactions engine")
 
     @contextmanager # allows to cleanly open and close sessions, automatically rolling back any errors
     def get_session(self):
