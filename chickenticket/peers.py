@@ -24,25 +24,28 @@
 
 import asyncio
 from hashlib import md5
-from uuid import uuid4 as make_uuid
 
 class PeerHandler:
-    def __init__(self, port=5000, peer_addrs=[]):
+    def __init__(self, new_peer_callback, port=5000, peer_addrs=[]):
         self.connected_peers = {}
         self.connecting_peers = {}
         self.port = port
 
+        self.new_peer_callback = new_peer_callback
+
         for peer_addr in peers:
             self.add_peer(peer_addr)
 
-        asyncio.runcoroutine_threadsafe(self.start_server)
+        asyncio.runcoroutine_threadsafe(asyncio.start_server, self.__call__, port=self.port)
 
     def add_peer(self, address):
-        peer_id = md5(address.encode("utf-8"))
+        peer_id = md5(address.encode("utf-8")).hexdigest()
 
         if not self.connected_peers[peer_id]:
             reader, writer = asyncio.runcoroutine_threadsafe(asyncio.open_connection(address, self.port))
-            print("Connected to new peer")
+
+            peer_addr = writer.get_extra_info("peername")
+            print("Connected to new peer: {} - {}".format(peer_addr, peer_id))
 
             self.connected_peers[peer_id] = {"addr": address, "reader": reader, "writer": writer}
 
@@ -74,9 +77,25 @@ class PeerHandler:
             except Exception as e:
                 print(f"{e.__class__.__name__}: {e}")
 
-    def __call__(reader, writer):
-        self.connecting_peers[make_uuid()] = {"reader": reader, "writer": writer}
-        print("New peer connected")
+    async def writer_connecting_peer(self, peer_id, data):
+        if self.connecting_peers[peer_id]:
+            try:
+                self.connecting_peers[peer_id]["writer"].write(data)
+            except Exception as e:
+                print(f"{e.__class__.__name__}: {e}")
 
-        # TODO: add polling and callback runner
-        # why is this nasty
+    async def read_connecting_peer(self, peer_id):
+        if self.connecting_peers[peer_id]:
+            try:
+                return self.connecting_peers[peer_id]["writer"].read()
+            except Exception as e:
+                print(f"{e.__class__.__name__}: {e}")
+
+    def __call__(reader, writer):
+        peer_addr = writer.get_extra_info("peername")
+        peer_id = md5(peer_addr.encode("utf-8")).hexdigest()
+
+        self.connecting_peers[peer_id] = {"addr": peer_addr, "reader": reader, "writer": writer}
+        print("New peer connected: {} - {}".format(peer_addr, peer_id))
+
+        self.new_peer_callback(peer_id)
