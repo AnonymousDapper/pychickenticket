@@ -23,47 +23,60 @@
 # QaD peer management system
 
 import asyncio
+from hashlib import md5
+from uuid import uuid4 as make_uuid
 
 class PeerHandler:
-    def __init__(self, port=5000, peers={}):
-        self.peers = {}
+    def __init__(self, port=5000, peer_addrs=[]):
+        self.connected_peers = {}
+        self.connecting_peers = {}
         self.port = port
 
-        for peer in peers:
-            self.add_peer(peer[0], peer[1], peer[2])
+        for peer_addr in peers:
+            self.add_peer(peer_addr)
 
         asyncio.runcoroutine_threadsafe(self.start_server)
 
-    def add_peer(self, address, port, nickname):
-        if not self.peers[nickname]:
-            reader, writer = asyncio.runcoroutine_threadsafe(asyncio.open_connection(address, port))
+    def add_peer(self, address):
+        peer_id = md5(address.encode("utf-8"))
 
-            self.peers[nickname] = {"addr": address, "port": port, "reader": reader, "writer": writer}
+        if not self.connected_peers[peer_id]:
+            reader, writer = asyncio.runcoroutine_threadsafe(asyncio.open_connection(address, self.port))
+            print("Connected to new peer")
+
+            self.connected_peers[peer_id] = {"addr": address, "reader": reader, "writer": writer}
+
+            return peer_id
 
         else:
             print("Already exists")
 
-    def remove_peer(self, nickname):
-        if not self.peers[nickname]:
-            self.peers[nickname]["writer"].close()
+    def remove_peer(self, peer_id):
+        if not self.connected_peers[peer_id]:
+            self.connected_peers[peer_id]["writer"].close()
 
-            del self.peers[nickname]
+            del self.connected_peers[peer_id]
 
         else:
             print("Does not exist")
 
-    async def write_peer(self, nickname, data):
-        if self.peers[nickname]:
+    async def write_peer(self, peer_id, data):
+        if self.connected_peers[peer_id]:
             try:
-                self.peers[nickname]["writer"].write(data)
+                self.connected_peers[peer_id]["writer"].write(data)
             except Exception as e:
                 print(f"{e.__class__.__name__}: {e}")
 
-    async def read_peer(self, nickname):
-        if self.peers[nickname]:
+    async def read_peer(self, peer_id):
+        if self.connected_peers[peer_id]:
             try:
-                return self.peers[nickname]["writer"].read()
+                return self.connected_peers[peer_id]["writer"].read()
             except Exception as e:
                 print(f"{e.__class__.__name__}: {e}")
 
-    def __call__()
+    def __call__(reader, writer):
+        self.connecting_peers[make_uuid()] = {"reader": reader, "writer": writer}
+        print("New peer connected")
+
+        # TODO: add polling and callback runner
+        # why is this nasty
